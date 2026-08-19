@@ -43,6 +43,14 @@
     <button class="btn btn-secondary btn-small" id="btnLogout">התנתקות</button>
   </div>
 
+  <!-- האזהרות והסנקציות שלי -->
+  <div class="equipment-category">
+    <div class="category-header">⚠️ האזהרות והסנקציות שלי</div>
+    <div style="padding:16px;" id="mySanctionsBox">
+      <p class="note">טוען...</p>
+    </div>
+  </div>
+
   <!-- הבקשות שלי -->
   <div class="equipment-category">
     <div class="category-header">📋 הבקשות שלי</div>
@@ -185,6 +193,7 @@ async function showMain() {
 
   renderEquipment();
   await loadData();
+  renderMySanctions();
   await renderMyRequests();
   checkSuspension();
 
@@ -201,6 +210,57 @@ async function loadData() {
   inventory = await invRes.json();
   bookings = await bookRes.json();
   sanctions = await sancRes.json();
+}
+
+const SANCTION_CATEGORY_LABELS = {
+  late_same_day: "איחור בהחזרה באותו יום",
+  late_over_day: "איחור בהחזרה של יום ומעלה",
+  damage: "נזק לציוד מרשלנות",
+  loss: "אובדן ציוד",
+  unauthorized_transfer: "העברת ציוד ללא אישור",
+  other: "אחר"
+};
+
+// לפי הערת השוליים בסעיף 5.1: מעבר ל-3 אזהרות בשנת הלימודים -> יש לשקול הגבלה.
+function schoolYearStart() {
+  const now = new Date();
+  const year = now.getMonth() >= 7 ? now.getFullYear() : now.getFullYear() - 1; // אוגוסט = תחילת שנה"ל
+  return new Date(year, 7, 1);
+}
+
+function mySanctionsList() {
+  const key = studentKeyOf(student.name, student.code);
+  return sanctions.filter(s => s.studentKey === key);
+}
+
+function renderMySanctions() {
+  const box = document.getElementById("mySanctionsBox");
+  const mine = mySanctionsList();
+
+  const start = schoolYearStart();
+  const warningCount = mine.filter(s => s.type === "warning" && s.issuedAt && new Date(s.issuedAt) >= start).length;
+  const counterHtml = `<div class="note" style="margin-bottom:12px; ${warningCount >= 3 ? "color:#991b1b; background:#fee2e2;" : "color:#6b7280; background:#f3f4f6;"}">
+    ${warningCount}/3 אזהרות בשנת הלימודים הנוכחית${warningCount >= 3 ? " — עברת את המכסה, ייתכן שתידרש/י לפנייה למנהל" : ""}.
+  </div>`;
+
+  if (mine.length === 0) {
+    box.innerHTML = counterHtml + `<p class="note">אין לך אזהרות או סנקציות רשומות. 🎉</p>`;
+    return;
+  }
+
+  const sorted = [...mine].sort((a, b) => (b.issuedAt || "").localeCompare(a.issuedAt || ""));
+  box.innerHTML = counterHtml + sorted.map(s => {
+    const active = s.type === "suspension" && (!s.until || s.until >= new Date().toISOString().slice(0, 10));
+    return `<div class="request-card" ${active ? 'style="border-color:#991b1b;"' : ""}>
+      <div class="top-row">
+        <span>${s.type === "suspension" ? "⛔ השעיה" : "⚠️ אזהרה"}${active ? " (פעילה)" : ""}${s.until ? " — עד " + s.until : ""}</span>
+        <span class="note" style="padding:2px 6px;">${s.issuedAt ? new Date(s.issuedAt).toLocaleDateString("he-IL") : ""}</span>
+      </div>
+      <div style="margin-top:6px; font-size:13px;">
+        ${SANCTION_CATEGORY_LABELS[s.category] || ""}${s.amount ? ` — לתשלום: ₪${s.amount}` : ""}${s.reason ? " — " + s.reason : ""}
+      </div>
+    </div>`;
+  }).join("");
 }
 
 function activeSuspension() {
@@ -394,18 +454,12 @@ async function renderMyRequests() {
   }
   issues.forEach(i => saveMyRequestId(i.number));
 
-  const catLabels = { late_same_day: "איחור באותו יום", late_over_day: "איחור של יום ומעלה", damage: "נזק לציוד", loss: "אובדן ציוד", unauthorized_transfer: "העברת ציוד ללא אישור", other: "אחר" };
-  const mySanctions = sanctions.filter(s => s.studentKey === studentKeyOf(student.name, student.code));
-  const sanctionsHtml = mySanctions.length ? `<div class="note" style="color:#92400e; background:#fef3c7; margin-bottom:12px;">
-    ${mySanctions.map(s => `⚠️ ${s.type === "suspension" ? "השעיה" : "אזהרה"}${s.category ? " — " + (catLabels[s.category] || "") : ""} (${s.issuedAt ? new Date(s.issuedAt).toLocaleDateString("he-IL") : ""})${s.reason ? ": " + s.reason : ""}`).join("<br>")}
-  </div>` : "";
-
   if (issues.length === 0) {
-    box.innerHTML = sanctionsHtml + `<p class="note">עדיין לא שלחת בקשות.</p>`;
+    box.innerHTML = `<p class="note">עדיין לא שלחת בקשות.</p>`;
     return;
   }
   issues.sort((a, b) => b.number - a.number);
-  box.innerHTML = sanctionsHtml + issues.map(i => {
+  box.innerHTML = issues.map(i => {
     const s = statusOf(i);
     const labels = (i.labels || []).map(l => (typeof l === "string" ? l : l.name));
     const needsPickupConfirm = labels.includes("approved") && !labels.includes("picked_up");
