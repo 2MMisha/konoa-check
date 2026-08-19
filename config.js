@@ -4,8 +4,8 @@
 // https://kolnoa-revivim-rashlaz.github.io/ziud/ אז:
 //   GITHUB_OWNER = "kolnoa-revivim-rashlaz"
 //   GITHUB_REPO  = "ziud"
-const GITHUB_OWNER = "REPLACE_ME_OWNER";
-const GITHUB_REPO = "REPLACE_ME_REPO";
+const GITHUB_OWNER = "2MMisha";
+const GITHUB_REPO = "konoa-check";
 
 // טוקן "בוט" ציבורי המשמש רק ליצירת בקשות (Issues) חדשות מהאתר הציבורי.
 // ליצירה: github.com -> Settings -> Developer settings -> Fine-grained tokens
