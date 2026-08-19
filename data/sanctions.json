@@ -10,17 +10,5 @@
     "reason": "test check 123",
     "issuedAt": "2026-08-19T16:05:19.131Z",
     "issuedBy": "admin"
-  },
-  {
-    "studentKey": "דוגמה-תלמיד_0000",
-    "name": "דוגמה תלמיד",
-    "class": "י",
-    "category": "damage",
-    "type": "suspension",
-    "until": null,
-    "amount": null,
-    "reason": "",
-    "issuedAt": "2026-08-19T16:05:21.139Z",
-    "issuedBy": "admin"
   }
 ]
