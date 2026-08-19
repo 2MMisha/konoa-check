@@ -13,7 +13,7 @@ const GITHUB_REPO = "konoa-check";
 // חשוב: טוקן זה גלוי לכל מי שרואה את קוד המקור של האתר (זו מגבלה של אתר
 // סטטי בלי שרת). לכן הוא מוגבל *רק* ל-Issues של הריפו הזה — במקרה הגרוע
 // מישהו יכול ליצור/להעיר על issues, אבל לא לגעת בקוד, בקבצים או במלאי.
-const GITHUB_BOT_TOKEN = "REPLACE_ME_BOT_TOKEN";
+const GITHUB_BOT_TOKEN = "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";
 
 // קישור לתקנון השאלת הציוד (חוזה שהתלמיד מתחייב לו בכל בקשה ובכל איסוף).
 // חשוב: יש לוודא שהקישור פתוח לצפייה לכל מי שיש לו את הקישור
