@@ -125,8 +125,8 @@ document.getElementById("btnUnlock").addEventListener("click", async () => {
   const err = document.getElementById("loginError");
   err.style.display = "none";
   try {
-    const res = await fetch("data/admin-secret.json");
-    if (!res.ok) throw new Error("קובץ data/admin-secret.json לא נמצא. הרץ setup.html קודם.");
+    const res = await fetch("data/admin-auth.json");
+    if (!res.ok) throw new Error("קובץ data/admin-auth.json לא נמצא. הרץ setup.html קודם.");
     const blob = await res.json();
     adminToken = await decryptSecret(pw, blob);
     document.getElementById("loginScreen").style.display = "none";

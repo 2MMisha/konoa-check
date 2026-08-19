@@ -108,7 +108,7 @@ Settings → Pages → Source: **Deploy from a branch** → Branch: `main`,
    write** וגם **Contents: Read and write**, מוגבל לריפו הזה בלבד.
 2. היכנס לעמוד `setup.html` באתר (אחרי שהוא כבר עלה, או פתח את הקובץ
    מקומית בדפדפן), הדבק את הטוקן, בחר סיסמה, ולחץ "צור קובץ הצפנה".
-3. שמור את הפלט כקובץ `data/admin-secret.json` והעלה אותו לריפו
+3. שמור את הפלט כקובץ `data/admin-auth.json` והעלה אותו לריפו
    (זהו ciphertext בלבד — בלי הסיסמה אי אפשר לחלץ ממנו את הטוקן).
 4. מעכשיו הכניסה ל-`admin.html` היא עם הסיסמה שבחרת.
 
