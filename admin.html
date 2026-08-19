@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>פאנל ניהול ציוד – קולנוע רביבים</title>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="container login-box" id="loginScreen">
+  <div class="header-section">
+    <h1>כניסת מנהל</h1>
+    <h2>ניהול ציוד – קולנוע רביבים</h2>
+  </div>
+  <div class="form-group">
+    <label>סיסמת מנהל:</label>
+    <input type="password" id="adminPassword" placeholder="סיסמה">
+  </div>
+  <div id="loginError" class="note" style="display:none; color:#991b1b; background:#fee2e2;"></div>
+  <button class="btn" id="btnUnlock">כניסה</button>
+  <p class="note" style="margin-top:14px;">אין עדיין קובץ הצפנה? היכנס/י ל-<a href="setup.html">setup.html</a> כדי ליצור אחד בפעם הראשונה.</p>
+</div>
+
+<div class="container" id="mainScreen" style="display:none; max-width:1100px;">
+  <div class="header-section">
+    <h1>פאנל ניהול ציוד</h1>
+    <h2>קולנוע רביבים</h2>
+  </div>
+
+  <div class="flex-row" id="kpiRow" style="margin-bottom:20px;"></div>
+
+  <div class="equipment-category">
+    <div class="category-header">📅 יומן איסופים והחזרות</div>
+    <div style="padding:16px;" id="calendarBox"><p class="note">טוען...</p></div>
+  </div>
+
+  <div class="equipment-category">
+    <div class="category-header">🕒 בקשות ממתינות לאישור</div>
+    <div style="padding:16px;" id="pendingList"><p class="note">טוען...</p></div>
+  </div>
+
+  <div class="equipment-category">
+    <div class="category-header">📦 ציוד שיצא (ממתין להחזרה)</div>
+    <div style="padding:16px;" id="approvedList"><p class="note">טוען...</p></div>
+  </div>
+
+  <div class="equipment-category">
+    <div class="category-header">⚠️ אזהרות וסנקציות</div>
+    <div style="padding:16px;">
+      <div class="flex-row" style="margin-bottom:0;">
+        <div class="flex-col">
+          <div class="form-group">
+            <label>תלמיד/ה:</label>
+            <select id="sanctionStudent"></select>
+          </div>
+          <div class="form-group">
+            <label>עילה (לפי <a href="#" id="rulesLinkAdmin" target="_blank">תקנון השאלת ציוד</a>, סעיף 5):</label>
+            <select id="sanctionCategory">
+              <option value="late_same_day">5.1 — איחור בהחזרה באותו יום (אזהרה, עד 3 בשנה)</option>
+              <option value="late_over_day">5.1 — איחור בהחזרה של יום ומעלה (השעיה 2 שבועות–חודשיים)</option>
+              <option value="damage">5.2 — נזק לציוד מרשלנות (חיוב כספי)</option>
+              <option value="loss">5.2 — אובדן ציוד (חיוב כספי)</option>
+              <option value="unauthorized_transfer">5.3 — העברת ציוד לתלמיד/ה אחר/ת ללא אישור וטופס</option>
+              <option value="other">אחר</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>סוג בפועל:</label>
+            <select id="sanctionType">
+              <option value="warning">אזהרה</option>
+              <option value="suspension">השעיה מהשאלת ציוד</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>עד תאריך (רק להשעיה, אפשר להשאיר ריק = עד ביטול):</label>
+            <input type="date" id="sanctionUntil">
+          </div>
+          <div class="form-group">
+            <label>סכום לחיוב (₪, רלוונטי לנזק/אובדן — אפשר להשאיר ריק):</label>
+            <input type="number" id="sanctionAmount" min="0" placeholder="0">
+          </div>
+          <div class="form-group">
+            <label>פירוט נוסף:</label>
+            <input type="text" id="sanctionReason" placeholder="לדוגמה: החזיר יום אחרי המועד שסוכם">
+          </div>
+          <button class="btn btn-small" id="btnAddSanction">➕ הוסף</button>
+        </div>
+        <div class="flex-col">
+          <div class="section-title">היסטוריה</div>
+          <div id="sanctionsList"><p class="note">טוען...</p></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="equipment-category">
+    <div class="category-header">🧰 מלאי ציוד</div>
+    <div style="padding:16px;" id="inventoryEditor"><p class="note">טוען...</p></div>
+    <div style="padding:0 16px 16px;">
+      <button class="btn btn-secondary" id="btnSaveInventory">💾 שמור שינויי מלאי</button>
+      <div id="inventoryMsg" class="note" style="display:none; margin-top:10px;"></div>
+    </div>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script src="js/items.js"></script>
+<script src="js/crypto.js"></script>
+<script src="js/github-api.js"></script>
+<script>
+let adminToken = null;
+let inventoryData = {};
+let inventorySha = null;
+let studentsList = [];
+let sanctionsData = [];
+
+function studentKeyOf(name, code) {
+  return (name.trim().replace(/\s+/g, "-") + "_" + code.trim());
+}
+
+document.getElementById("btnUnlock").addEventListener("click", async () => {
+  const pw = document.getElementById("adminPassword").value;
+  const err = document.getElementById("loginError");
+  err.style.display = "none";
+  try {
+    const res = await fetch("data/admin-secret.json");
+    if (!res.ok) throw new Error("קובץ data/admin-secret.json לא נמצא. הרץ setup.html קודם.");
+    const blob = await res.json();
+    adminToken = await decryptSecret(pw, blob);
+    document.getElementById("loginScreen").style.display = "none";
+    document.getElementById("mainScreen").style.display = "block";
+    await loadAll();
+  } catch (e) {
+    err.textContent = "סיסמה שגויה או שגיאה: " + e.message;
+    err.style.display = "block";
+  }
+});
+
+async function loadAll() {
+  document.getElementById("rulesLinkAdmin").href = RULES_DOC_URL;
+  await Promise.all([renderPending(), renderApproved()]);
+  renderDashboard();
+  await Promise.all([loadInventoryEditor(), loadSanctions()]);
+}
+
+function itemsSummary(items) {
+  return (items || []).map(i => `${i.name || i.id}${i.qty > 1 ? " ×" + i.qty : ""}`).join(", ");
+}
+
+function parsePayload(issueBody) {
+  const m = issueBody.match(/```json\s*([\s\S]*?)```/);
+  if (!m) return null;
+  try { return JSON.parse(m[1]); } catch (e) { return null; }
+}
+
+let pendingIssues = [];
+let approvedIssues = [];
+
+async function renderPending() {
+  const box = document.getElementById("pendingList");
+  const issues = await listIssuesByLabel(adminToken, "pending", "open");
+  pendingIssues = issues;
+  if (issues.length === 0) { box.innerHTML = `<p class="note">אין בקשות ממתינות.</p>`; return; }
+  let sancList = [];
+  try { sancList = await (await fetch("data/sanctions.json")).json(); } catch (e) {}
+  box.innerHTML = issues.map(issue => {
+    const p = parsePayload(issue.body) || {};
+    const studentSanctions = sancList.filter(s => s.studentKey === p.studentKey);
+    return `<div class="request-card" id="pending_${issue.number}">
+      <div class="top-row">
+        <span><strong>#${issue.number}</strong> ${p.name || ""} (${p.class || ""}) — ${p.phone || ""}</span>
+        <span class="status-badge status-pending">ממתין</span>
+      </div>
+      ${studentSanctions.length ? `<div class="note" style="color:#92400e; background:#fef3c7; margin-top:6px;">⚠️ ${studentSanctions.length} רשומות אזהרה/השעיה לתלמיד/ה זו</div>` : ""}
+      ${!p.agreedToRules ? `<div class="note" style="color:#991b1b; background:#fee2e2; margin-top:6px;">⚠️ לא נמצא אישור תקנון בבקשה זו</div>` : ""}
+      <div style="margin-top:8px; font-size:14px;">
+        📅 ${(p.pickup || "").replace("T"," ")} → ${(p.return || "").replace("T"," ")}<br>
+        🎬 ${itemsSummary(p.items)}
+        ${p.notes ? `<br>📝 ${p.notes}` : ""}
+      </div>
+      <div style="margin-top:10px; display:flex; gap:8px;">
+        <button class="btn btn-small" onclick="decide(${issue.number}, 'approved')">✅ אשר</button>
+        <button class="btn btn-small btn-danger" onclick="decide(${issue.number}, 'rejected')">❌ דחה</button>
+        <a class="btn btn-small btn-secondary" href="https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/issues/${issue.number}" target="_blank" style="text-decoration:none; display:inline-flex; align-items:center;">פתח ב-GitHub</a>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+async function renderApproved() {
+  const box = document.getElementById("approvedList");
+  const issues = await listIssuesByLabel(adminToken, "approved", "open");
+  approvedIssues = issues;
+  if (issues.length === 0) { box.innerHTML = `<p class="note">אין ציוד בחוץ כרגע.</p>`; return; }
+  const now = new Date();
+  box.innerHTML = issues.map(issue => {
+    const p = parsePayload(issue.body) || {};
+    const overdue = p.return && new Date(p.return) < now;
+    const labels = (issue.labels || []).map(l => (typeof l === "string" ? l : l.name));
+    const pickedUp = labels.includes("picked_up");
+    return `<div class="request-card" id="approved_${issue.number}">
+      <div class="top-row">
+        <span><strong>#${issue.number}</strong> ${p.name || ""} (${p.class || ""})</span>
+        <span class="status-badge ${overdue ? "status-rejected" : "status-approved"}">${overdue ? "⏰ באיחור" : "אושר"}</span>
+      </div>
+      <div style="margin-top:8px; font-size:14px;">
+        📅 ${(p.pickup || "").replace("T"," ")} → ${(p.return || "").replace("T"," ")}<br>
+        🎬 ${itemsSummary(p.items)}
+        ${pickedUp ? "<br>✍️ התלמיד/ה אישר/ה איסוף בפועל" : "<br>⏳ טרם אושר איסוף בפועל ע\"י התלמיד/ה"}
+      </div>
+      <div style="margin-top:10px;">
+        <button class="btn btn-small btn-secondary" onclick="decide(${issue.number}, 'returned')">📦 סמן כהוחזר</button>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+async function decide(number, label) {
+  try {
+    await setIssueLabels(adminToken, number, [label]);
+    await loadAll();
+  } catch (e) {
+    alert("שגיאה: " + e.message);
+  }
+}
+
+function renderDashboard() {
+  const now = new Date();
+  const overdueCount = approvedIssues.filter(issue => {
+    const p = parsePayload(issue.body) || {};
+    return p.return && new Date(p.return) < now;
+  }).length;
+
+  document.getElementById("kpiRow").innerHTML = `
+    <div class="kpi-card"><div class="num">${pendingIssues.length}</div><div class="label">בקשות ממתינות</div></div>
+    <div class="kpi-card"><div class="num">${approvedIssues.length}</div><div class="label">ציוד בחוץ</div></div>
+    <div class="kpi-card ${overdueCount ? "danger" : ""}"><div class="num">${overdueCount}</div><div class="label">באיחור החזרה</div></div>
+  `;
+
+  const events = [];
+  pendingIssues.forEach(issue => {
+    const p = parsePayload(issue.body) || {};
+    if (p.pickup) events.push({ date: p.pickup, type: "pickup", tentative: true, name: p.name, class: p.class, items: itemsSummary(p.items), number: issue.number });
+  });
+  approvedIssues.forEach(issue => {
+    const p = parsePayload(issue.body) || {};
+    if (p.pickup) events.push({ date: p.pickup, type: "pickup", tentative: false, name: p.name, class: p.class, items: itemsSummary(p.items), number: issue.number });
+    if (p.return) events.push({ date: p.return, type: "return", tentative: false, name: p.name, class: p.class, items: itemsSummary(p.items), number: issue.number, overdue: new Date(p.return) < now });
+  });
+
+  events.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  const box = document.getElementById("calendarBox");
+  if (events.length === 0) { box.innerHTML = `<p class="note">אין אירועים קרובים.</p>`; return; }
+
+  const byDay = {};
+  events.forEach(e => {
+    const day = e.date.slice(0, 10);
+    (byDay[day] = byDay[day] || []).push(e);
+  });
+
+  box.innerHTML = Object.keys(byDay).sort().map(day => {
+    const dayLabel = new Date(day).toLocaleDateString("he-IL", { weekday: "long", day: "numeric", month: "numeric" });
+    const rows = byDay[day].map(e => {
+      const time = e.date.slice(11, 16);
+      const cls = e.overdue ? "overdue" : (e.type === "pickup" ? "pickup" : "return");
+      const icon = e.type === "pickup" ? "🚗 איסוף" : "🔙 החזרה";
+      return `<div class="cal-event ${cls}">
+        <span class="time">${time}</span>
+        <span>${icon}${e.tentative ? " (ממתין לאישור)" : ""} — <strong>#${e.number}</strong> ${e.name || ""} (${e.class || ""}) — ${e.items}</span>
+      </div>`;
+    }).join("");
+    return `<div class="cal-day"><div class="cal-date">${dayLabel}</div>${rows}</div>`;
+  }).join("");
+}
+
+async function loadInventoryEditor() {
+  const res = await fetch("data/inventory.json");
+  inventoryData = await res.json();
+  delete inventoryData._comment;
+  const box = document.getElementById("inventoryEditor");
+  box.innerHTML = EQUIPMENT_CATALOG.map(cat => `
+    <div style="margin-bottom:14px;">
+      <div style="font-weight:600; color:var(--primary); margin-bottom:8px;">${cat.title}</div>
+      <div class="equipment-grid">
+        ${cat.items.map(item => `
+          <div class="equip-item">
+            <label for="inv_${item.id}" style="flex:1;">${item.name}</label>
+            <input type="number" class="qty-input" id="inv_${item.id}" min="0" value="${inventoryData[item.id] ?? 0}">
+          </div>`).join("")}
+      </div>
+    </div>`).join("");
+}
+
+document.getElementById("btnSaveInventory").addEventListener("click", async () => {
+  const msg = document.getElementById("inventoryMsg");
+  const newInventory = { _comment: "כמות המלאי בפועל לכל פריט — נערך דרך פאנל הניהול." };
+  EQUIPMENT_CATALOG.forEach(cat => cat.items.forEach(item => {
+    const el = document.getElementById("inv_" + item.id);
+    newInventory[item.id] = Math.max(0, parseInt(el.value || "0", 10));
+  }));
+
+  try {
+    // מביא sha נוכחי של הקובץ כדי לעדכן אותו (Contents API)
+    const current = await ghRequest(repoPath("/contents/data/inventory.json"), { token: adminToken });
+    const content = btoa(unescape(encodeURIComponent(JSON.stringify(newInventory, null, 2))));
+    await ghRequest(repoPath("/contents/data/inventory.json"), {
+      method: "PUT",
+      token: adminToken,
+      body: { message: "עדכון מלאי ציוד מפאנל הניהול", content, sha: current.sha }
+    });
+    msg.textContent = "✅ המלאי נשמר בהצלחה.";
+    msg.style.display = "block";
+    msg.style.color = "#166534";
+  } catch (e) {
+    msg.textContent = "❌ שגיאה בשמירה: " + e.message;
+    msg.style.display = "block";
+    msg.style.color = "#991b1b";
+  }
+});
+
+async function loadSanctions() {
+  const [studentsRes, sancRes] = await Promise.all([
+    fetch("data/students.json"),
+    fetch("data/sanctions.json")
+  ]);
+  studentsList = (await studentsRes.json()).students;
+  sanctionsData = await sancRes.json();
+
+  const sel = document.getElementById("sanctionStudent");
+  sel.innerHTML = studentsList.map(s => `<option value="${studentKeyOf(s.name, s.code)}">${s.name} (${s.class})</option>`).join("");
+  sel.addEventListener("change", updateWarningCounter);
+
+  renderSanctionsList();
+  updateWarningCounter();
+}
+
+const SANCTION_CATEGORY_LABELS = {
+  late_same_day: "איחור באותו יום",
+  late_over_day: "איחור של יום ומעלה",
+  damage: "נזק לציוד מרשלנות",
+  loss: "אובדן ציוד",
+  unauthorized_transfer: "העברת ציוד ללא אישור",
+  other: "אחר"
+};
+
+// לפי סעיף 5.1 בתקנון: איחור באותו יום = אזהרה, איחור של יום+ = השעיה.
+document.getElementById("sanctionCategory").addEventListener("change", (e) => {
+  const map = { late_same_day: "warning", late_over_day: "suspension", damage: "warning", loss: "warning", unauthorized_transfer: "warning", other: "warning" };
+  document.getElementById("sanctionType").value = map[e.target.value] || "warning";
+});
+
+// לפי הערת השוליים בסעיף 5.1: מעבר ל-3 אזהרות בשנת הלימודים -> יש לשקול הגבלה.
+function schoolYearStart() {
+  const now = new Date();
+  const year = now.getMonth() >= 7 ? now.getFullYear() : now.getFullYear() - 1; // אוגוסט = תחילת שנה"ל
+  return new Date(year, 7, 1);
+}
+
+function updateWarningCounter() {
+  const key = document.getElementById("sanctionStudent").value;
+  const start = schoolYearStart();
+  const count = sanctionsData.filter(s => s.studentKey === key && s.type === "warning" && new Date(s.issuedAt) >= start).length;
+  let box = document.getElementById("warningCounterNote");
+  if (!box) {
+    box = document.createElement("div");
+    box.id = "warningCounterNote";
+    box.className = "note";
+    document.getElementById("sanctionStudent").parentElement.appendChild(box);
+  }
+  box.style.display = "block";
+  if (count >= 3) {
+    box.style.color = "#991b1b"; box.style.background = "#fee2e2";
+    box.textContent = `⚠️ ${count} אזהרות בשנת הלימודים הנוכחית — עברה 3, יש לשקול הגבלה/השעיה (סעיף 5.1).`;
+  } else {
+    box.style.color = "#6b7280"; box.style.background = "#f3f4f6";
+    box.textContent = `${count}/3 אזהרות בשנת הלימודים הנוכחית.`;
+  }
+}
+
+function renderSanctionsList() {
+  const box = document.getElementById("sanctionsList");
+  if (sanctionsData.length === 0) { box.innerHTML = `<p class="note">אין אזהרות/השעיות רשומות.</p>`; return; }
+  const sorted = [...sanctionsData].sort((a, b) => (b.issuedAt || "").localeCompare(a.issuedAt || ""));
+  box.innerHTML = sorted.map((s, idx) => {
+    const realIdx = sanctionsData.indexOf(s);
+    return `<div class="request-card">
+      <div class="top-row">
+        <span><strong>${s.name}</strong> (${s.class}) — ${s.type === "suspension" ? "השעיה" : "אזהרה"}${s.until ? " עד " + s.until : ""}</span>
+        <button class="btn btn-small btn-danger" onclick="removeSanction(${realIdx})">מחק</button>
+      </div>
+      <div style="margin-top:6px; font-size:13px;">
+        ${SANCTION_CATEGORY_LABELS[s.category] || ""}${s.amount ? ` — ₪${s.amount}` : ""}${s.reason ? " — " + s.reason : ""}
+        <span class="note" style="padding:2px 6px;">${s.issuedAt ? new Date(s.issuedAt).toLocaleDateString("he-IL") : ""}</span>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+async function saveSanctions() {
+  const current = await ghRequest(repoPath("/contents/data/sanctions.json"), { token: adminToken });
+  const content = btoa(unescape(encodeURIComponent(JSON.stringify(sanctionsData, null, 2))));
+  await ghRequest(repoPath("/contents/data/sanctions.json"), {
+    method: "PUT",
+    token: adminToken,
+    body: { message: "עדכון אזהרות/סנקציות", content, sha: current.sha }
+  });
+}
+
+document.getElementById("btnAddSanction").addEventListener("click", async () => {
+  const key = document.getElementById("sanctionStudent").value;
+  const match = studentsList.find(s => studentKeyOf(s.name, s.code) === key);
+  if (!match) { alert("בחר/י תלמיד/ה."); return; }
+  const category = document.getElementById("sanctionCategory").value;
+  const type = document.getElementById("sanctionType").value;
+  const until = document.getElementById("sanctionUntil").value || null;
+  const amount = parseInt(document.getElementById("sanctionAmount").value || "0", 10) || null;
+  const reason = document.getElementById("sanctionReason").value.trim();
+
+  sanctionsData.push({
+    studentKey: key, name: match.name, class: match.class,
+    category, type, until: type === "suspension" ? until : null, amount, reason,
+    issuedAt: new Date().toISOString(), issuedBy: "admin"
+  });
+
+  try {
+    await saveSanctions();
+    document.getElementById("sanctionReason").value = "";
+    document.getElementById("sanctionUntil").value = "";
+    document.getElementById("sanctionAmount").value = "";
+    renderSanctionsList();
+    updateWarningCounter();
+  } catch (e) {
+    sanctionsData.pop();
+    alert("שגיאה בשמירה: " + e.message);
+  }
+});
+
+async function removeSanction(idx) {
+  if (!confirm("למחוק רשומה זו?")) return;
+  const removed = sanctionsData.splice(idx, 1);
+  try {
+    await saveSanctions();
+    renderSanctionsList();
+  } catch (e) {
+    sanctionsData.splice(idx, 0, removed[0]);
+    alert("שגיאה במחיקה: " + e.message);
+  }
+}
+</script>
+</body>
+</html>

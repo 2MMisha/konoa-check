@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+<title>טופס השאלת ציוד – מגמת קולנוע רביבים</title>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- מסך כניסה -->
+<div class="container login-box" id="loginScreen">
+  <div class="header-section">
+    <h1>כניסת תלמיד</h1>
+    <h2>מגמת קולנוע רביבים</h2>
+  </div>
+  <div class="form-group">
+    <label>שם:</label>
+    <select id="loginName">
+      <option value="" selected>בחר/י שם...</option>
+    </select>
+  </div>
+  <div class="form-group">
+    <label>קוד אישי:</label>
+    <input type="password" id="loginCode" placeholder="הקוד שקיבלת מהמנהל" inputmode="numeric">
+  </div>
+  <div id="loginError" class="note" style="display:none; color:#991b1b; background:#fee2e2;"></div>
+  <button class="btn" id="btnLogin">כניסה</button>
+  <p class="note" style="margin-top:14px;">לא מופיע ברשימה או שכחת קוד? פנה/י לצוות: מיכאל 054-7798676</p>
+</div>
+
+<!-- המסך הראשי -->
+<div class="container" id="mainScreen" style="display:none;">
+
+  <div class="header-section">
+    <h1>טופס הזמנת ציוד</h1>
+    <h2>מגמת קולנוע רביבים | תשפ״ו 2026</h2>
+  </div>
+
+  <div class="flex-row" style="align-items:center;">
+    <div style="flex:1;">שלום, <strong id="welcomeName"></strong> (<span id="welcomeClass"></span>)</div>
+    <button class="btn btn-secondary btn-small" id="btnLogout">התנתקות</button>
+  </div>
+
+  <!-- הבקשות שלי -->
+  <div class="equipment-category">
+    <div class="category-header">📋 הבקשות שלי</div>
+    <div style="padding:16px;" id="myRequests">
+      <p class="note">טוען...</p>
+    </div>
+  </div>
+
+  <hr>
+
+  <!-- פרטי ההפקה -->
+  <div class="flex-row">
+    <div class="flex-col">
+      <div class="section-title">פרטי ההפקה</div>
+      <div class="form-group">
+        <label>טלפון ליצירת קשר:</label>
+        <input type="tel" id="phone" placeholder="05X-XXXXXXX">
+      </div>
+    </div>
+    <div class="flex-col">
+      <div class="section-title">מועדי שאלה</div>
+      <div class="form-group">
+        <label>תאריך ושעת איסוף:</label>
+        <input type="datetime-local" id="pickup">
+      </div>
+      <div class="form-group">
+        <label>תאריך ושעת החזרה:</label>
+        <input type="datetime-local" id="returnDate">
+      </div>
+      <div class="note"><strong>צוות אחראי:</strong> מיכאל 054-7798676 | גוש עציון 23, ראשל״צ</div>
+    </div>
+  </div>
+
+  <div id="equipmentContainer"></div>
+
+  <div class="flex-row" style="margin-top: 10px;">
+    <div class="flex-col" style="flex:1;">
+      <div class="form-group">
+        <label>הערות נוספות / בקשות מיוחדות:</label>
+        <input type="text" id="notes" placeholder="לדוגמה: עדשה נוספת, כבל מיוחד...">
+      </div>
+    </div>
+  </div>
+
+  <div class="equip-item" style="border:1px solid var(--border); padding:14px; align-items:flex-start;">
+    <input type="checkbox" id="agreeRules" style="margin-top:3px;">
+    <label for="agreeRules" style="font-weight:500;">
+      קראתי את <a href="#" id="rulesLink" target="_blank">תקנון השאלת ציוד</a> ואני מתחייב/ת לפעול לפיו.
+      ידוע לי שהפרת התקנון עלולה לגרור אזהרה או השעיה מהשאלת ציוד.
+    </label>
+  </div>
+
+  <div id="suspendedNotice" class="note" style="display:none; color:#991b1b; background:#fee2e2; margin-top:14px;"></div>
+  <div id="submitError" class="note" style="display:none; color:#991b1b; background:#fee2e2;"></div>
+  <button class="btn" id="btnSubmit">📤 שליחת בקשה</button>
+</div>
+
+<script src="config.js"></script>
+<script src="js/items.js"></script>
+<script src="js/github-api.js"></script>
+<script src="js/availability.js"></script>
+<script>
+const LS_STUDENT = "kolnoa_student";
+const LS_MY_REQUESTS = "kolnoa_my_requests";
+
+let inventory = {};
+let bookings = [];
+let sanctions = [];
+let student = null;
+
+function studentKeyOf(name, code) {
+  return (name.trim().replace(/\s+/g, "-") + "_" + code.trim());
+}
+
+function loadMyRequestIds() {
+  try { return JSON.parse(localStorage.getItem(LS_MY_REQUESTS) || "[]"); } catch (e) { return []; }
+}
+function saveMyRequestId(num) {
+  const list = loadMyRequestIds();
+  if (!list.includes(num)) { list.push(num); localStorage.setItem(LS_MY_REQUESTS, JSON.stringify(list)); }
+}
+
+async function init() {
+  const saved = localStorage.getItem(LS_STUDENT);
+  if (saved) {
+    student = JSON.parse(saved);
+    showMain();
+  } else {
+    await populateStudentSelect();
+    document.getElementById("loginScreen").style.display = "block";
+  }
+}
+
+async function populateStudentSelect() {
+  const res = await fetch("data/students.json");
+  const data = await res.json();
+  const sel = document.getElementById("loginName");
+  data.students.forEach(s => {
+    const opt = document.createElement("option");
+    opt.value = JSON.stringify(s);
+    opt.textContent = `${s.name} (${s.class})`;
+    sel.appendChild(opt);
+  });
+  window._studentsList = data.students;
+}
+
+document.getElementById("btnLogin").addEventListener("click", async () => {
+  const sel = document.getElementById("loginName");
+  const code = document.getElementById("loginCode").value.trim();
+  const err = document.getElementById("loginError");
+  err.style.display = "none";
+
+  if (!sel.value) { err.textContent = "יש לבחור שם."; err.style.display = "block"; return; }
+  const chosen = JSON.parse(sel.value);
+
+  if (!window._studentsList) await populateStudentSelect();
+  const match = window._studentsList.find(s => s.name === chosen.name && s.code === code);
+  if (!match) {
+    err.textContent = "קוד שגוי. נסה/י שוב או פנה/י למנהל.";
+    err.style.display = "block";
+    return;
+  }
+  student = match;
+  localStorage.setItem(LS_STUDENT, JSON.stringify(student));
+  showMain();
+});
+
+document.getElementById("btnLogout").addEventListener("click", () => {
+  localStorage.removeItem(LS_STUDENT);
+  location.reload();
+});
+
+async function showMain() {
+  document.getElementById("loginScreen").style.display = "none";
+  document.getElementById("mainScreen").style.display = "block";
+  document.getElementById("welcomeName").textContent = student.name;
+  document.getElementById("welcomeClass").textContent = student.class;
+
+  document.getElementById("rulesLink").href = RULES_DOC_URL;
+
+  renderEquipment();
+  await loadData();
+  await renderMyRequests();
+  checkSuspension();
+
+  document.getElementById("pickup").addEventListener("change", updateAvailability);
+  document.getElementById("returnDate").addEventListener("change", updateAvailability);
+}
+
+async function loadData() {
+  const [invRes, bookRes, sancRes] = await Promise.all([
+    fetch("data/inventory.json"),
+    fetch("data/bookings.json"),
+    fetch("data/sanctions.json")
+  ]);
+  inventory = await invRes.json();
+  bookings = await bookRes.json();
+  sanctions = await sancRes.json();
+}
+
+function activeSuspension() {
+  const key = studentKeyOf(student.name, student.code);
+  const today = new Date().toISOString().slice(0, 10);
+  return sanctions.find(s => s.studentKey === key && s.type === "suspension" && (!s.until || s.until >= today));
+}
+
+function checkSuspension() {
+  const notice = document.getElementById("suspendedNotice");
+  const susp = activeSuspension();
+  const submitBtn = document.getElementById("btnSubmit");
+  if (susp) {
+    notice.style.display = "block";
+    notice.textContent = `⛔ יש לך השעיה פעילה מהשאלת ציוד${susp.until ? " עד " + susp.until : ""}. סיבה: ${susp.reason || "—"}. לפנייה: מיכאל 054-7798676.`;
+    submitBtn.disabled = true;
+  } else {
+    notice.style.display = "none";
+    submitBtn.disabled = false;
+  }
+}
+
+function renderEquipment() {
+  const container = document.getElementById("equipmentContainer");
+  container.innerHTML = "";
+  EQUIPMENT_CATALOG.forEach(cat => {
+    const catDiv = document.createElement("div");
+    catDiv.className = "equipment-category";
+    catDiv.innerHTML = `<div class="category-header">${cat.title}</div><div class="equipment-grid" id="grid_${cat.category}"></div>`;
+    container.appendChild(catDiv);
+    const grid = catDiv.querySelector(".equipment-grid");
+    cat.items.forEach(item => {
+      const div = document.createElement("div");
+      div.className = "equip-item";
+      div.id = "row_" + item.id;
+      div.innerHTML = `
+        <input type="checkbox" id="chk_${item.id}">
+        <label for="chk_${item.id}">${item.name}</label>
+        ${item.qtyField ? `<input type="number" class="qty-input" id="qty_${item.id}" min="1" value="1">` : ""}
+        <span class="avail-note" id="avail_${item.id}"></span>
+      `;
+      grid.appendChild(div);
+    });
+  });
+}
+
+function updateAvailability() {
+  const pickup = document.getElementById("pickup").value;
+  const ret = document.getElementById("returnDate").value;
+  EQUIPMENT_CATALOG.forEach(cat => cat.items.forEach(item => {
+    const row = document.getElementById("row_" + item.id);
+    const noteEl = document.getElementById("avail_" + item.id);
+    const chk = document.getElementById("chk_" + item.id);
+    const qtyInput = document.getElementById("qty_" + item.id);
+    if (!pickup || !ret) { row.classList.remove("unavailable"); noteEl.textContent = ""; return; }
+
+    const avail = availableQtyForItem(inventory, bookings, item.id, pickup, ret);
+    row.classList.toggle("unavailable", avail <= 0);
+    noteEl.className = "avail-note" + (avail <= 0 ? " none" : (avail <= 1 ? " low" : ""));
+    noteEl.textContent = avail <= 0 ? "לא זמין בתאריכים אלו" : `זמין: ${avail}`;
+    if (avail <= 0) { chk.checked = false; chk.disabled = true; } else { chk.disabled = false; }
+    if (qtyInput) qtyInput.max = avail > 0 ? avail : 1;
+  }));
+}
+
+function collectSelectedItems() {
+  const items = [];
+  EQUIPMENT_CATALOG.forEach(cat => cat.items.forEach(item => {
+    const chk = document.getElementById("chk_" + item.id);
+    if (chk && chk.checked) {
+      const qtyInput = document.getElementById("qty_" + item.id);
+      items.push({ id: item.id, name: item.name, qty: qtyInput ? Math.max(1, parseInt(qtyInput.value || "1", 10)) : 1 });
+    }
+  }));
+  return items;
+}
+
+document.getElementById("btnSubmit").addEventListener("click", async () => {
+  const errEl = document.getElementById("submitError");
+  errEl.style.display = "none";
+
+  const pickup = document.getElementById("pickup").value;
+  const returnDate = document.getElementById("returnDate").value;
+  const phone = document.getElementById("phone").value.trim();
+  const notes = document.getElementById("notes").value.trim();
+  const items = collectSelectedItems();
+
+  if (!pickup || !returnDate) { errEl.textContent = "נא למלא תאריך ושעת איסוף והחזרה."; errEl.style.display = "block"; return; }
+  if (new Date(returnDate) <= new Date(pickup)) { errEl.textContent = "תאריך ההחזרה חייב להיות אחרי תאריך האיסוף."; errEl.style.display = "block"; return; }
+  if (items.length === 0) { errEl.textContent = "נא לבחור לפחות פריט ציוד אחד."; errEl.style.display = "block"; return; }
+  if (activeSuspension()) { errEl.textContent = "יש לך השעיה פעילה — לא ניתן לשלוח בקשה. פנה/י למנהל."; errEl.style.display = "block"; return; }
+  if (!document.getElementById("agreeRules").checked) { errEl.textContent = "יש לאשר שקראת את התקנון לפני שליחת הבקשה."; errEl.style.display = "block"; return; }
+
+  const key = studentKeyOf(student.name, student.code);
+  const agreedAt = new Date().toISOString();
+  const itemsList = items.map(i => `- ${i.name}${i.qty > 1 ? " × " + i.qty : ""}`).join("\n");
+  const title = `בקשת ציוד – ${student.name} (${student.class}) – ${pickup.replace("T", " ")}`;
+  const body = [
+    `**שם:** ${student.name}`,
+    `**כיתה:** ${student.class}`,
+    `**טלפון:** ${phone || "—"}`,
+    `**איסוף:** ${pickup.replace("T", " ")}`,
+    `**החזרה:** ${returnDate.replace("T", " ")}`,
+    `**ציוד מבוקש:**`,
+    itemsList,
+    notes ? `**הערות:** ${notes}` : "",
+    `✍️ ${student.name} אישר/ה בתאריך ${agreedAt} שקרא/ה את התקנון ומתחייב/ת לפעול לפיו.`,
+    ``,
+    `<!-- studentKey:${key} -->`,
+    "```json",
+    JSON.stringify({ studentKey: key, name: student.name, class: student.class, phone, pickup, return: returnDate, items, notes, agreedToRules: true, agreedAt }, null, 2),
+    "```"
+  ].filter(Boolean).join("\n\n");
+
+  document.getElementById("btnSubmit").disabled = true;
+  document.getElementById("btnSubmit").textContent = "שולח...";
+  try {
+    const issue = await createRequestIssue(GITHUB_BOT_TOKEN, { title, body });
+    saveMyRequestId(issue.number);
+    await renderMyRequests();
+    document.getElementById("pickup").value = "";
+    document.getElementById("returnDate").value = "";
+    document.getElementById("notes").value = "";
+    document.getElementById("agreeRules").checked = false;
+    EQUIPMENT_CATALOG.forEach(cat => cat.items.forEach(item => {
+      const chk = document.getElementById("chk_" + item.id);
+      if (chk) chk.checked = false;
+    }));
+    alert(`הבקשה נשלחה בהצלחה! מספר בקשה #${issue.number}. תקבל/י עדכון כשהיא תיבדק.`);
+  } catch (e) {
+    errEl.textContent = "שגיאה בשליחת הבקשה: " + e.message;
+    errEl.style.display = "block";
+  } finally {
+    document.getElementById("btnSubmit").disabled = false;
+    document.getElementById("btnSubmit").textContent = "📤 שליחת בקשה";
+  }
+});
+
+function statusOf(issue) {
+  const labels = (issue.labels || []).map(l => (typeof l === "string" ? l : l.name));
+  if (labels.includes("returned")) return { text: "הוחזר", cls: "status-returned" };
+  if (labels.includes("rejected")) return { text: "נדחה", cls: "status-rejected" };
+  if (labels.includes("approved")) return { text: "אושר ✅", cls: "status-approved" };
+  return { text: "ממתין לאישור", cls: "status-pending" };
+}
+
+function showPickupForm(number) {
+  const el = document.getElementById("pickupForm_" + number);
+  if (el) el.style.display = el.style.display === "none" ? "block" : "none";
+}
+
+async function submitPickup(number) {
+  const roles = ["director", "producer", "cinematographer", "editor", "sound"];
+  const names = {};
+  roles.forEach(r => { names[r] = document.getElementById(`pu_${r}_${number}`).value.trim(); });
+  const agree4 = document.getElementById(`pu_agree4_${number}`).checked;
+
+  if (!agree4) { alert('יש לאשר שכל חברי הצוות הנוכחים קראו את חלק ד׳ של התקנון.'); return; }
+
+  const roleLabels = { director: "במאי/ת", producer: "מפיק/ה", cinematographer: "צלם/ת", editor: "עורך/ת", sound: "סאונדמן/ית" };
+  const rosterLines = roles.filter(r => names[r]).map(r => `- ${roleLabels[r]}: ${names[r]}`).join("\n") || "(לא צוינו שמות נוספים)";
+  const now = new Date().toISOString();
+
+  try {
+    await createIssueComment(GITHUB_BOT_TOKEN, number, [
+      `✍️ ${student.name} אישר/ה איסוף בפועל בתאריך ${now}, ומתחייב/ת לתקנון השאלת הציוד.`,
+      ``,
+      `חלק ד' (נהלים בזמן ההפקה) — הצוות הבא אישר קריאה והבנה:`,
+      rosterLines
+    ].join("\n"));
+    await addIssueLabels(GITHUB_BOT_TOKEN, number, ["picked_up"]);
+    await renderMyRequests();
+  } catch (e) {
+    alert("שגיאה באישור האיסוף: " + e.message);
+  }
+}
+
+async function renderMyRequests() {
+  const box = document.getElementById("myRequests");
+  const key = studentKeyOf(student.name, student.code);
+  let issues = [];
+  try {
+    const res = await searchMyIssues(GITHUB_BOT_TOKEN, key);
+    issues = res.items || [];
+  } catch (e) {
+    // גיבוי: הצג לפי מזהי בקשות שנשמרו בדפדפן בלבד
+    const ids = loadMyRequestIds();
+    for (const num of ids) {
+      try { issues.push(await getIssue(GITHUB_BOT_TOKEN, num)); } catch (e2) {}
+    }
+  }
+  issues.forEach(i => saveMyRequestId(i.number));
+
+  const catLabels = { late_same_day: "איחור באותו יום", late_over_day: "איחור של יום ומעלה", damage: "נזק לציוד", loss: "אובדן ציוד", unauthorized_transfer: "העברת ציוד ללא אישור", other: "אחר" };
+  const mySanctions = sanctions.filter(s => s.studentKey === studentKeyOf(student.name, student.code));
+  const sanctionsHtml = mySanctions.length ? `<div class="note" style="color:#92400e; background:#fef3c7; margin-bottom:12px;">
+    ${mySanctions.map(s => `⚠️ ${s.type === "suspension" ? "השעיה" : "אזהרה"}${s.category ? " — " + (catLabels[s.category] || "") : ""} (${s.issuedAt ? new Date(s.issuedAt).toLocaleDateString("he-IL") : ""})${s.reason ? ": " + s.reason : ""}`).join("<br>")}
+  </div>` : "";
+
+  if (issues.length === 0) {
+    box.innerHTML = sanctionsHtml + `<p class="note">עדיין לא שלחת בקשות.</p>`;
+    return;
+  }
+  issues.sort((a, b) => b.number - a.number);
+  box.innerHTML = sanctionsHtml + issues.map(i => {
+    const s = statusOf(i);
+    const labels = (i.labels || []).map(l => (typeof l === "string" ? l : l.name));
+    const needsPickupConfirm = labels.includes("approved") && !labels.includes("picked_up");
+    return `<div class="request-card"><div class="top-row">
+      <span>בקשה #${i.number} — ${new Date(i.created_at).toLocaleDateString("he-IL")}</span>
+      <span class="status-badge ${s.cls}">${s.text}</span>
+    </div>
+    ${needsPickupConfirm ? `
+      <button class="btn btn-small btn-secondary" style="margin-top:8px;" onclick="showPickupForm(${i.number})">✍️ אישור איסוף בפועל</button>
+      <div id="pickupForm_${i.number}" style="display:none; margin-top:12px; padding:12px; background:#f9fafb; border-radius:8px; border:1px solid var(--border);">
+        <p class="note" style="margin-bottom:10px;">חלק ד׳ בתקנון (נהלים בזמן ההפקה) מחייב אישור מכל חברי ההפקה. מי שנוכח/ת — נא למלא שם:</p>
+        <div class="form-group"><label>במאי/ת:</label><input type="text" id="pu_director_${i.number}"></div>
+        <div class="form-group"><label>מפיק/ה:</label><input type="text" id="pu_producer_${i.number}" value="${student.name}"></div>
+        <div class="form-group"><label>צלם/ת:</label><input type="text" id="pu_cinematographer_${i.number}"></div>
+        <div class="form-group"><label>עורך/ת:</label><input type="text" id="pu_editor_${i.number}"></div>
+        <div class="form-group"><label>סאונדמן/ית:</label><input type="text" id="pu_sound_${i.number}"></div>
+        <div class="equip-item" style="border:1px solid var(--border); align-items:flex-start;">
+          <input type="checkbox" id="pu_agree4_${i.number}" style="margin-top:3px;">
+          <label for="pu_agree4_${i.number}">כל חברי הצוות שצוינו למעלה קראו את <a href="${RULES_DOC_URL}" target="_blank">חלק ד׳ של התקנון</a> (בטיחות ונהלים בזמן ההפקה) ומאשרים הבנה והתחייבות.</label>
+        </div>
+        <button class="btn btn-small" style="margin-top:10px;" onclick="submitPickup(${i.number})">✅ אישור וחתימה סופית</button>
+      </div>` : ""}
+    </div>`;
+  }).join("");
+}
+
+init();
+</script>
+</body>
+</html>

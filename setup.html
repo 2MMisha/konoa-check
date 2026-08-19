@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>הגדרה ראשונית – טוקן מנהל</title>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="container" style="max-width:640px;">
+  <div class="header-section">
+    <h1>הגדרה חד-פעמית</h1>
+    <h2>יצירת קובץ הצפנה לטוקן המנהל</h2>
+  </div>
+
+  <div class="note" style="margin-bottom:20px;">
+    דף זה רץ כולו בדפדפן שלך — שום דבר לא נשלח לשום מקום. הוא מצפין את
+    הטוקן שלך עם הסיסמה שתבחר/י, ומייצר קובץ JSON שאפשר להעלות בבטחה
+    לריפו הציבורי (בלי הסיסמה, אי אפשר לפענח ממנו את הטוקן).
+  </div>
+
+  <div class="form-group">
+    <label>הטוקן שלך מ-GitHub (Personal Access Token):</label>
+    <input type="password" id="token" placeholder="github_pat_...">
+    <p class="note" style="margin-top:6px;">
+      ליצירה: github.com ← Settings ← Developer settings ← Fine-grained tokens ← Generate new token.
+      בחר/י "Only select repositories" ← את הריפו הזה בלבד. בהרשאות (Repository permissions):
+      <strong>Issues: Read and write</strong>, <strong>Contents: Read and write</strong>. שום הרשאה אחרת.
+    </p>
+  </div>
+
+  <div class="form-group">
+    <label>בחר/י סיסמת מנהל (זו הסיסמה שתשתמש/י בה בכל כניסה ל-admin.html):</label>
+    <input type="password" id="password">
+  </div>
+  <div class="form-group">
+    <label>אימות סיסמה:</label>
+    <input type="password" id="password2">
+  </div>
+
+  <button class="btn" id="btnGenerate">🔐 צור קובץ הצפנה</button>
+
+  <div id="result" style="display:none; margin-top:24px;">
+    <div class="section-title">התוצאה</div>
+    <p class="note">העתק/י את הטקסט הבא לקובץ בשם <code>data/admin-secret.json</code> בריפו והעלה/י (commit).</p>
+    <textarea id="output" style="width:100%; height:160px; font-family:monospace; font-size:12px; padding:10px; border:1px solid var(--border); border-radius:8px; margin-top:10px;" readonly></textarea>
+    <button class="btn btn-secondary" id="btnCopy" style="margin-top:10px;">העתק ללוח</button>
+  </div>
+</div>
+
+<script src="js/crypto.js"></script>
+<script>
+document.getElementById("btnGenerate").addEventListener("click", async () => {
+  const token = document.getElementById("token").value.trim();
+  const pw = document.getElementById("password").value;
+  const pw2 = document.getElementById("password2").value;
+  if (!token) { alert("נא להזין טוקן."); return; }
+  if (pw.length < 6) { alert("הסיסמה חייבת להיות באורך 6 תווים לפחות."); return; }
+  if (pw !== pw2) { alert("הסיסמאות אינן תואמות."); return; }
+
+  const blob = await encryptSecret(pw, token);
+  document.getElementById("output").value = JSON.stringify(blob, null, 2);
+  document.getElementById("result").style.display = "block";
+});
+
+document.getElementById("btnCopy").addEventListener("click", () => {
+  document.getElementById("output").select();
+  document.execCommand("copy");
+});
+</script>
+</body>
+</html>
