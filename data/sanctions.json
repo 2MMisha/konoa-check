@@ -1,14 +1,1 @@
-[
-  {
-    "studentKey": "דוגמה-תלמיד_0000",
-    "name": "דוגמה תלמיד",
-    "class": "י",
-    "category": "damage",
-    "type": "suspension",
-    "until": "2026-08-20",
-    "amount": 1000,
-    "reason": "test check 123",
-    "issuedAt": "2026-08-19T16:05:19.131Z",
-    "issuedBy": "admin"
-  }
-]
+[]
