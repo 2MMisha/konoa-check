@@ -34,17 +34,5 @@
     "reason": "",
     "issuedAt": "2026-08-20T21:20:14.957Z",
     "issuedBy": "admin"
-  },
-  {
-    "studentKey": "דוגמה-תלמיד_0000",
-    "name": "דוגמה תלמיד",
-    "class": "י",
-    "category": "other",
-    "type": "warning",
-    "until": null,
-    "amount": null,
-    "reason": "ДОЛБОЕБ НИКОГДА ТЕБЕ НЕ ДАМ ЦИЮД",
-    "issuedAt": "2026-08-20T21:30:47.220Z",
-    "issuedBy": "admin"
   }
 ]
