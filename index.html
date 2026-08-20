@@ -460,11 +460,18 @@ async function renderMyRequests() {
     const res = await searchMyIssues(GITHUB_BOT_TOKEN, key);
     issues = res.items || [];
   } catch (e) {
-    // גיבוי: הצג לפי מזהי בקשות שנשמרו בדפדפן בלבד
-    const ids = loadMyRequestIds();
-    for (const num of ids) {
-      try { issues.push(await getIssue(GITHUB_BOT_TOKEN, num)); } catch (e2) {}
-    }
+    issues = [];
+  }
+
+  // ה-Search API לפעמים לוקח כמה שניות עד שהוא מאנדקס issue שנוצר הרגע —
+  // נשלים ידנית לפי המספרים שכבר נשמרו בדפדפן, כדי שבקשה שרק נשלחה תופיע מיד.
+  const known = new Set(issues.map(i => i.number));
+  for (const num of loadMyRequestIds()) {
+    if (known.has(num)) continue;
+    try {
+      issues.push(await getIssue(GITHUB_BOT_TOKEN, num));
+      known.add(num);
+    } catch (e2) {}
   }
   issues.forEach(i => saveMyRequestId(i.number));
 
