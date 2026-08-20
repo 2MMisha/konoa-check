@@ -38,7 +38,8 @@ Generate new token**.
 - Repository access: **Only select repositories** ← בחר את הריפו הזה בלבד.
 - Repository permissions: **Issues: Read and write** בלבד. שום הרשאה אחרת.
 - **אל תדביק את הטוקן בתוך `config.js`!** במקום זה: Settings → Secrets
-  and variables → Actions → **New repository secret** → שם `GITHUB_BOT_TOKEN`,
+  and variables → Actions → **New repository secret** → שם `BOT_GH_TOKEN`
+  (לא ניתן להתחיל שם של secret ב-GITHUB_, זה שמור על ידי GitHub),
   ערך = הטוקן. הקובץ `config.js` בריפו נשאר תמיד עם ערך placeholder
   (`__GITHUB_BOT_TOKEN__`), וה-workflow `deploy-pages.yml` מחליף אותו
   בטוקן האמיתי רק בזמן הפריסה בפועל — כך שהטוקן האמיתי אף פעם לא נשמר

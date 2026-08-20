@@ -30,9 +30,9 @@ jobs:
             echo "::error::config.js is missing the __GITHUB_BOT_TOKEN__ placeholder — refusing to deploy a real token would leak into git."
             exit 1
           fi
-          sed -i "s|__GITHUB_BOT_TOKEN__|${GITHUB_BOT_TOKEN}|" config.js
+          sed -i "s|__GITHUB_BOT_TOKEN__|${BOT_GH_TOKEN}|" config.js
         env:
-          GITHUB_BOT_TOKEN: ${{ secrets.GITHUB_BOT_TOKEN }}
+          BOT_GH_TOKEN: ${{ secrets.BOT_GH_TOKEN }}
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
