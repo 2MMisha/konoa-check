@@ -37,13 +37,19 @@
 Generate new token**.
 - Repository access: **Only select repositories** ← בחר את הריפו הזה בלבד.
 - Repository permissions: **Issues: Read and write** בלבד. שום הרשאה אחרת.
-- העתק את הטוקן לתוך `GITHUB_BOT_TOKEN` ב-`config.js`.
+- **אל תדביק את הטוקן בתוך `config.js`!** במקום זה: Settings → Secrets
+  and variables → Actions → **New repository secret** → שם `GITHUB_BOT_TOKEN`,
+  ערך = הטוקן. הקובץ `config.js` בריפו נשאר תמיד עם ערך placeholder
+  (`__GITHUB_BOT_TOKEN__`), וה-workflow `deploy-pages.yml` מחליף אותו
+  בטוקן האמיתי רק בזמן הפריסה בפועל — כך שהטוקן האמיתי אף פעם לא נשמר
+  ב-git (ולכן GitHub לא סורק ומבטל אותו אוטומטית, כפי שקורה כשמדביקים
+  טוקן אמיתי ישירות בקובץ).
 
-⚠️ **חשוב להבין:** טוקן זה גלוי בקוד המקור של האתר לכל מי שרואה אותו
-(זו מגבלה בסיסית של אתר בלי שרת). לכן חובה להגביל אותו **רק** ל-Issues
-של הריפו הזה. במקרה הגרוע ביותר מישהו יוכל ליצור/להעיר על issues, אבל
-לא לגעת בקוד, בקבצים, או במלאי — וגם לא "לאשר" בקשות בעצמו, כי לכך יש
-הגנה נפרדת (סעיף 5).
+⚠️ **חשוב להבין:** למרות זאת, הטוקן עדיין מגיע בסוף לקוד המקור **המפורסם**
+של האתר (מי שיפתח את דפי המקור בדפדפן יראה אותו) — זו מגבלה בסיסית של
+אתר בלי שרת. לכן חובה להגביל אותו **רק** ל-Issues של הריפו הזה. במקרה
+הגרוע ביותר מישהו יוכל ליצור/להעיר על issues, אבל לא לגעת בקוד, בקבצים,
+או במלאי — וגם לא "לאשר" בקשות בעצמו, כי לכך יש הגנה נפרדת (סעיף 5).
 
 ### 4. יצירת התוויות (Labels) בריפו
 ב-Settings → Labels, צור: `pending`, `approved`, `rejected`, `returned`,
@@ -65,8 +71,9 @@ Settings → Actions → General → Workflow permissions → בחר
 את `data/bookings.json`.)
 
 ### 7. הפעלת GitHub Pages
-Settings → Pages → Source: **Deploy from a branch** → Branch: `main`,
-תיקייה `/ (root)`.
+Settings → Pages → Source: **GitHub Actions** (לא "Deploy from a
+branch" — הפריסה קורית דרך `deploy-pages.yml` כדי שהוא יוכל להחליף את
+placeholder הטוקן בזמן הבנייה, כמתואר בסעיף 3).
 
 ### 8. רשימת תלמידים
 ערוך את `data/students.json` — הוסף שם, כיתה, וקוד אישי לכל תלמיד.

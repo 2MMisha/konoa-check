@@ -10,10 +10,12 @@ const GITHUB_REPO = "konoa-check";
 // טוקן "בוט" ציבורי המשמש רק ליצירת בקשות (Issues) חדשות מהאתר הציבורי.
 // ליצירה: github.com -> Settings -> Developer settings -> Fine-grained tokens
 // הרשאות: Repository permissions -> Issues: Read and write. שום הרשאה אחרת!
-// חשוב: טוקן זה גלוי לכל מי שרואה את קוד המקור של האתר (זו מגבלה של אתר
-// סטטי בלי שרת). לכן הוא מוגבל *רק* ל-Issues של הריפו הזה — במקרה הגרוע
-// מישהו יכול ליצור/להעיר על issues, אבל לא לגעת בקוד, בקבצים או במלאי.
-const GITHUB_BOT_TOKEN = "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";
+// חשוב: אין למלא את הטוקן כאן ישירות! השאירו את המחרוזת __GITHUB_BOT_TOKEN__
+// כפי שהיא — היא מוחלפת בטוקן האמיתי אוטומטית בזמן הפריסה על ידי
+// .github/workflows/deploy-pages.yml, מתוך Repository Secret בשם
+// GITHUB_BOT_TOKEN (Settings -> Secrets and variables -> Actions). ככה
+// הטוקן האמיתי אף פעם לא נשמר ב-git ולא נסרק/מבוטל אוטומטית על ידי GitHub.
+const GITHUB_BOT_TOKEN = "__GITHUB_BOT_TOKEN__";
 
 // קישור לתקנון השאלת הציוד (חוזה שהתלמיד מתחייב לו בכל בקשה ובכל איסוף).
 // חשוב: יש לוודא שהקישור פתוח לצפייה לכל מי שיש לו את הקישור
