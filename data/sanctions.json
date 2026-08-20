@@ -22,17 +22,5 @@
     "reason": "",
     "issuedAt": "2026-08-20T21:20:11.365Z",
     "issuedBy": "admin"
-  },
-  {
-    "studentKey": "דוגמה-תלמיד_0000",
-    "name": "דוגמה תלמיד",
-    "class": "י",
-    "category": "late_same_day",
-    "type": "warning",
-    "until": null,
-    "amount": null,
-    "reason": "",
-    "issuedAt": "2026-08-20T21:20:14.957Z",
-    "issuedBy": "admin"
   }
 ]
