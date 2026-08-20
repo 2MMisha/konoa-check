@@ -250,7 +250,7 @@ function renderMySanctions() {
 
   const sorted = [...mine].sort((a, b) => (b.issuedAt || "").localeCompare(a.issuedAt || ""));
   box.innerHTML = counterHtml + sorted.map(s => {
-    const active = s.type === "suspension" && (!s.until || s.until >= new Date().toISOString().slice(0, 10));
+    const active = s.type === "suspension" && (!s.until || s.until >= todayLocalISO());
     return `<div class="request-card" ${active ? 'style="border-color:#991b1b;"' : ""}>
       <div class="top-row">
         <span>${s.type === "suspension" ? "⛔ השעיה" : "⚠️ אזהרה"}${active ? " (פעילה)" : ""}${s.until ? " — עד " + s.until : ""}</span>
@@ -263,9 +263,16 @@ function renderMySanctions() {
   }).join("");
 }
 
+// תאריך "היום" לפי השעון המקומי (לא UTC) — כדי שהשעיה תיפתח בדיוק בחצות
+// המקומית, ולא שעתיים-שלוש מאוחר יותר בגלל הפרש UTC.
+function todayLocalISO() {
+  const d = new Date();
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+}
+
 function activeSuspension() {
   const key = studentKeyOf(student.name, student.code);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayLocalISO();
   return sanctions.find(s => s.studentKey === key && s.type === "suspension" && (!s.until || s.until >= today));
 }
 
