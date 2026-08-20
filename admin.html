@@ -115,6 +115,7 @@ let inventoryData = {};
 let inventorySha = null;
 let studentsList = [];
 let sanctionsData = [];
+let sanctionActionInProgress = false;
 
 function studentKeyOf(name, code) {
   return (name.trim().replace(/\s+/g, "-") + "_" + code.trim());
@@ -398,11 +399,10 @@ function renderSanctionsList() {
   if (sanctionsData.length === 0) { box.innerHTML = `<p class="note">אין אזהרות/השעיות רשומות.</p>`; return; }
   const sorted = [...sanctionsData].sort((a, b) => (b.issuedAt || "").localeCompare(a.issuedAt || ""));
   box.innerHTML = sorted.map((s, idx) => {
-    const realIdx = sanctionsData.indexOf(s);
     return `<div class="request-card">
       <div class="top-row">
         <span><strong>${s.name}</strong> (${s.class}) — ${s.type === "suspension" ? "השעיה" : "אזהרה"}${s.until ? " עד " + fmtDate(s.until) : ""}</span>
-        <button class="btn btn-small btn-danger" onclick="removeSanction(${realIdx})">מחק</button>
+        <button class="btn btn-small btn-danger" onclick="removeSanction('${s.issuedAt}')">מחק</button>
       </div>
       <div style="margin-top:6px; font-size:13px;">
         ${SANCTION_CATEGORY_LABELS[s.category] || ""}${s.amount ? ` — ₪${s.amount}` : ""}${s.reason ? " — " + s.reason : ""}
@@ -423,6 +423,7 @@ async function saveSanctions() {
 }
 
 document.getElementById("btnAddSanction").addEventListener("click", async () => {
+  if (sanctionActionInProgress) return;
   const key = document.getElementById("sanctionStudent").value;
   const match = studentsList.find(s => studentKeyOf(s.name, s.code) === key);
   if (!match) { alert("בחר/י תלמיד/ה."); return; }
@@ -438,6 +439,7 @@ document.getElementById("btnAddSanction").addEventListener("click", async () => 
     issuedAt: new Date().toISOString(), issuedBy: "admin"
   });
 
+  sanctionActionInProgress = true;
   try {
     await saveSanctions();
     document.getElementById("sanctionReason").value = "";
@@ -448,11 +450,21 @@ document.getElementById("btnAddSanction").addEventListener("click", async () => 
   } catch (e) {
     sanctionsData.pop();
     alert("שגיאה בשמירה: " + e.message);
+  } finally {
+    sanctionActionInProgress = false;
   }
 });
 
-async function removeSanction(idx) {
+// מזהה רשומה למחיקה לפי issuedAt (ייחודי לכל רשומה) ולא לפי מיקום ברשימה —
+// מיקום יכול להשתנות בין קליק לרינדור הבא ולגרום למחיקת הרשומה הלא נכונה
+// (או לכלום) אם לוחצים כמה פעמים ברצף.
+async function removeSanction(issuedAt) {
+  if (sanctionActionInProgress) return;
   if (!confirm("למחוק רשומה זו?")) return;
+  const idx = sanctionsData.findIndex(s => s.issuedAt === issuedAt);
+  if (idx === -1) { renderSanctionsList(); return; }
+
+  sanctionActionInProgress = true;
   const removed = sanctionsData.splice(idx, 1);
   try {
     await saveSanctions();
@@ -460,6 +472,8 @@ async function removeSanction(idx) {
   } catch (e) {
     sanctionsData.splice(idx, 0, removed[0]);
     alert("שגיאה במחיקה: " + e.message);
+  } finally {
+    sanctionActionInProgress = false;
   }
 }
 </script>
