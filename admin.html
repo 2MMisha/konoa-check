@@ -120,6 +120,19 @@ function studentKeyOf(name, code) {
   return (name.trim().replace(/\s+/g, "-") + "_" + code.trim());
 }
 
+// מציג תאריכים בפורמט יום/חודש/שנה, במקום ISO גולמי (YYYY-MM-DD).
+function fmtDate(iso) {
+  if (!iso) return "";
+  const [y, m, d] = iso.slice(0, 10).split("-");
+  return `${d}.${m}.${y}`;
+}
+function fmtDateTime(iso) {
+  if (!iso) return "";
+  const [datePart, timePart] = iso.split("T");
+  const time = timePart ? timePart.slice(0, 5) : "";
+  return fmtDate(datePart) + (time ? " " + time : "");
+}
+
 document.getElementById("btnUnlock").addEventListener("click", async () => {
   const pw = document.getElementById("adminPassword").value;
   const err = document.getElementById("loginError");
@@ -176,7 +189,7 @@ async function renderPending() {
       ${studentSanctions.length ? `<div class="note" style="color:#92400e; background:#fef3c7; margin-top:6px;">⚠️ ${studentSanctions.length} רשומות אזהרה/השעיה לתלמיד/ה זו</div>` : ""}
       ${!p.agreedToRules ? `<div class="note" style="color:#991b1b; background:#fee2e2; margin-top:6px;">⚠️ לא נמצא אישור תקנון בבקשה זו</div>` : ""}
       <div style="margin-top:8px; font-size:14px;">
-        📅 ${(p.pickup || "").replace("T"," ")} → ${(p.return || "").replace("T"," ")}<br>
+        📅 ${fmtDateTime(p.pickup)} → ${fmtDateTime(p.return)}<br>
         🎬 ${itemsSummary(p.items)}
         ${p.notes ? `<br>📝 ${p.notes}` : ""}
       </div>
@@ -206,7 +219,7 @@ async function renderApproved() {
         <span class="status-badge ${overdue ? "status-rejected" : "status-approved"}">${overdue ? "⏰ באיחור" : "אושר"}</span>
       </div>
       <div style="margin-top:8px; font-size:14px;">
-        📅 ${(p.pickup || "").replace("T"," ")} → ${(p.return || "").replace("T"," ")}<br>
+        📅 ${fmtDateTime(p.pickup)} → ${fmtDateTime(p.return)}<br>
         🎬 ${itemsSummary(p.items)}
         ${pickedUp ? "<br>✍️ התלמיד/ה אישר/ה איסוף בפועל" : "<br>⏳ טרם אושר איסוף בפועל ע\"י התלמיד/ה"}
       </div>
@@ -388,7 +401,7 @@ function renderSanctionsList() {
     const realIdx = sanctionsData.indexOf(s);
     return `<div class="request-card">
       <div class="top-row">
-        <span><strong>${s.name}</strong> (${s.class}) — ${s.type === "suspension" ? "השעיה" : "אזהרה"}${s.until ? " עד " + s.until : ""}</span>
+        <span><strong>${s.name}</strong> (${s.class}) — ${s.type === "suspension" ? "השעיה" : "אזהרה"}${s.until ? " עד " + fmtDate(s.until) : ""}</span>
         <button class="btn btn-small btn-danger" onclick="removeSanction(${realIdx})">מחק</button>
       </div>
       <div style="margin-top:6px; font-size:13px;">

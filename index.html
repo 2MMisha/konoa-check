@@ -125,6 +125,13 @@ function studentKeyOf(name, code) {
   return (name.trim().replace(/\s+/g, "-") + "_" + code.trim());
 }
 
+// מציג תאריכים בפורמט יום/חודש/שנה, במקום ISO גולמי (YYYY-MM-DD).
+function fmtDate(iso) {
+  if (!iso) return "";
+  const [y, m, d] = iso.slice(0, 10).split("-");
+  return `${d}.${m}.${y}`;
+}
+
 function loadMyRequestIds() {
   try { return JSON.parse(localStorage.getItem(LS_MY_REQUESTS) || "[]"); } catch (e) { return []; }
 }
@@ -253,7 +260,7 @@ function renderMySanctions() {
     const active = s.type === "suspension" && (!s.until || s.until >= todayLocalISO());
     return `<div class="request-card" ${active ? 'style="border-color:#991b1b;"' : ""}>
       <div class="top-row">
-        <span>${s.type === "suspension" ? "⛔ השעיה" : "⚠️ אזהרה"}${active ? " (פעילה)" : ""}${s.until ? " — עד " + s.until : ""}</span>
+        <span>${s.type === "suspension" ? "⛔ השעיה" : "⚠️ אזהרה"}${active ? " (פעילה)" : ""}${s.until ? " — עד " + fmtDate(s.until) : ""}</span>
         <span class="note" style="padding:2px 6px;">${s.issuedAt ? new Date(s.issuedAt).toLocaleDateString("he-IL") : ""}</span>
       </div>
       <div style="margin-top:6px; font-size:13px;">
@@ -282,7 +289,7 @@ function checkSuspension() {
   const submitBtn = document.getElementById("btnSubmit");
   if (susp) {
     notice.style.display = "block";
-    notice.textContent = `⛔ יש לך השעיה פעילה מהשאלת ציוד${susp.until ? " עד " + susp.until : ""}. סיבה: ${susp.reason || "—"}. לפנייה: מיכאל 054-7798676.`;
+    notice.textContent = `⛔ יש לך השעיה פעילה מהשאלת ציוד${susp.until ? " עד " + fmtDate(susp.until) : ""}. סיבה: ${susp.reason || "—"}. לפנייה: מיכאל 054-7798676.`;
     submitBtn.disabled = true;
   } else {
     notice.style.display = "none";
